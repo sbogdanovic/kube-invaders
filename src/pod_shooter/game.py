@@ -142,7 +142,7 @@ class Game:
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("Kube Invaders")
+        pygame.display.set_caption("Pod Invaders")
         self.clock = pygame.time.Clock()
 
         self.font = PixelFont("monospace", 18)
@@ -193,7 +193,6 @@ class Game:
         self._countdown_state = None
         self._countdown_anim = 0.0
         self._formation_bottom_y = 0.0
-        self._last_alien_eta: float | None = None
 
         self.spawn_wave()
 
@@ -373,8 +372,6 @@ class Game:
             ):
                 self.bullets.append(a._dive_bullet)
                 a._dive_bullet = None
-            # Move all aliens' formation x so diving aliens stay in
-            # sync with the grid.  Wall checks only use non-diving aliens.
             a.x += self.alien_speed * self.alien_dir
 
         for a in self.aliens:
@@ -385,19 +382,6 @@ class Game:
 
         if move_down:
             self.alien_dir *= -1
-            # Clamp formation so the triggering edge sits exactly at the
-            # boundary, preventing multi-frame bounce cascades.
-            formation_aliens = self._get_formation_aliens()
-            if formation_aliens:
-                left, right = self._get_formation_side_bounds(formation_aliens)
-                if right > WIDTH - 10:
-                    overshoot = right - (WIDTH - 10)
-                    for a in self.aliens:
-                        a.x -= overshoot
-                elif left < 10:
-                    overshoot = 10 - left
-                    for a in self.aliens:
-                        a.x += overshoot
             for a in self.aliens:
                 a.y += ALIEN_DROP
 
@@ -492,27 +476,12 @@ class Game:
                     self.spawn_explosion(b.x, b.y, NEON_GREEN, 5)
                     break
 
-    def _get_formation_aliens(self) -> list[Alien]:
-        return [a for a in self.aliens if a.alive and not a.diving]
-
-    @staticmethod
-    def _get_formation_bottom_y(formation_aliens: list[Alien]) -> float:
-        # Use formation-space body bounds (not animated outline wobble)
-        return max(a.y + a.h // 2 for a in formation_aliens)
-
-    @staticmethod
-    def _get_formation_side_bounds(
-        formation_aliens: list[Alien],
-    ) -> tuple[float, float]:
-        left = min(a.x - a.w // 2 for a in formation_aliens)
-        right = max(a.x + a.w // 2 for a in formation_aliens)
-        return left, right
-
     def _check_formation_breach(self):
-        formation_aliens = self._get_formation_aliens()
-        if not formation_aliens:
-            return  # all remaining aliens are diving; skip breach check
-        self._formation_bottom_y = self._get_formation_bottom_y(formation_aliens)
+        formation_aliens = [a for a in self.aliens if a.alive and not a.diving]
+        if formation_aliens:
+            self._formation_bottom_y = max(
+                max(pt[1] for pt in a.get_outline()) for a in formation_aliens
+            )
         if self._formation_bottom_y >= ALIEN_FAIL_LINE_Y:
             self._start_game_over()
 
@@ -574,69 +543,6 @@ class Game:
             (0, 0),
         ]
 
-    def _estimate_alien_win_eta(self) -> float | None:
-        living_aliens = [a for a in self.aliens if a.alive]
-        if not living_aliens:
-            return None
-
-        # Use all living aliens' grid positions for side bounds so that
-        # diving aliens don't cause the ETA to jump around.
-        formation_aliens = [a for a in living_aliens if not a.diving]
-        if not formation_aliens:
-            # All remaining aliens are diving; keep showing last known ETA
-            if self._last_alien_eta is not None:
-                return self._last_alien_eta
-            return None
-
-        speed_px_per_frame = abs(self.alien_speed)
-        if speed_px_per_frame <= 1e-6:
-            return None
-
-        # Side bounds from ALL living aliens (stable even during dives)
-        all_left = min(a.x - a.w // 2 for a in living_aliens)
-        all_right = max(a.x + a.w // 2 for a in living_aliens)
-        sim_left, sim_right = all_left, all_right
-        sim_bottom = self._get_formation_bottom_y(formation_aliens)
-        sim_dir = 1 if self.alien_dir >= 0 else -1
-
-        if sim_bottom >= ALIEN_FAIL_LINE_Y:
-            return 0.0
-
-        movement_eta = 0.0
-        while sim_bottom < ALIEN_FAIL_LINE_Y:
-            if sim_dir > 0:
-                distance_to_wall = (WIDTH - 10) - sim_right
-            else:
-                distance_to_wall = sim_left - 10
-
-            distance_to_wall = max(0.0, distance_to_wall)
-            movement_eta += distance_to_wall / speed_px_per_frame / FPS
-
-            sim_left += distance_to_wall * sim_dir
-            sim_right += distance_to_wall * sim_dir
-
-            sim_dir *= -1
-            sim_bottom += ALIEN_DROP
-
-        countdown_delay = max(0.0, self._countdown_timer)
-        eta = countdown_delay + movement_eta
-        self._last_alien_eta = eta
-        return eta
-
-    def _get_hud_alien_timer(self) -> tuple[float | None, bool]:
-        if self.state != "playing":
-            return None, True
-
-        eta = self._estimate_alien_win_eta()
-        if eta is None:
-            return None, True
-
-        if eta <= 10.0:
-            blink_visible = (time.time() * 4.0) % 1.0 < 0.5
-            return eta, blink_visible
-
-        return eta, True
-
     # -- Draw --------------------------------------------------------------
 
     def draw(self):
@@ -647,25 +553,18 @@ class Game:
         self.screen.fill(BG_COLOR)
         self.starfield.draw(self.screen)
 
+        # ...existing code...
+
         if self.state == "title":
             self._draw_title()
             return
 
         self._draw_world(self.screen)
-        alien_eta, alien_timer_visible = self._get_hud_alien_timer()
 
         if self.state == "playing" and self._countdown_state is not None:
             self._draw_countdown()
 
-        draw_hud(
-            self.screen,
-            self.small_font,
-            self.score,
-            self.lives,
-            self.wave,
-            alien_win_eta=alien_eta,
-            alien_timer_visible=alien_timer_visible,
-        )
+        draw_hud(self.screen, self.font, self.score, self.lives, self.wave)
 
     def _draw_world(self, surface):
         for s in self.shields:
@@ -714,7 +613,7 @@ class Game:
         base.fill(BG_COLOR)
         self.starfield.draw(base)
         self._draw_world(base)
-        draw_hud(base, self.small_font, self.score, self.lives, self.wave)
+        draw_hud(base, self.font, self.score, self.lives, self.wave)
 
         zoom = self._gameover_zoom
         zw, zh = int(WIDTH * zoom), int(HEIGHT * zoom)
@@ -791,16 +690,7 @@ class Game:
         surf.set_alpha(alpha)
         self.screen.blit(surf, surf.get_rect(center=(WIDTH // 2, HEIGHT // 2)))
 
-        alien_eta, alien_timer_visible = self._get_hud_alien_timer()
-        draw_hud(
-            self.screen,
-            self.small_font,
-            self.score,
-            self.lives,
-            self.wave,
-            alien_win_eta=alien_eta,
-            alien_timer_visible=alien_timer_visible,
-        )
+        draw_hud(self.screen, self.font, self.score, self.lives, self.wave)
 
         if self.wave_msg_timer > 0:
             wave_surf = self.big_font.render(f"WAVE {self.wave}", True, NEON_GREEN)
@@ -813,7 +703,7 @@ class Game:
     def _draw_title(self):
         cx = WIDTH // 2
 
-        title = self.big_font.render("KUBE INVADERS", True, NEON_CYAN)
+        title = self.big_font.render("POD INVADERS", True, NEON_CYAN)
         self.screen.blit(title, title.get_rect(center=(cx, HEIGHT // 3)))
 
         subtitle = self.font.render("NEON SPACE INVADERS", True, NEON_MAGENTA)
