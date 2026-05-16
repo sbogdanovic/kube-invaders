@@ -36,8 +36,14 @@ class Bullet:
             ]
             draw_glow_lines(surface, self.color, True, pts, 1, 3)
         else:
-            draw_glow_lines(surface, self.color, False,
-                            [(x, y - length // 2 - pulse), (x, y + length // 2 + pulse)], 2, 3)
+            draw_glow_lines(
+                surface,
+                self.color,
+                False,
+                [(x, y - length // 2 - pulse), (x, y + length // 2 + pulse)],
+                2,
+                3,
+            )
 
     @property
     def rect(self):

@@ -35,7 +35,9 @@ class _NebulaCloud:
             # Outer layers dimmer, inner layers brighter
             a = int(15 + 30 * (1.0 - ratio))
             if r > 0:
-                pygame.draw.circle(self._surface, (self.r, self.g, self.b, a), (cx, cy), r)
+                pygame.draw.circle(
+                    self._surface, (self.r, self.g, self.b, a), (cx, cy), r
+                )
 
     def update(self):
         self.y += self.speed

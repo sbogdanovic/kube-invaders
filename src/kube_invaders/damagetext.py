@@ -1,6 +1,3 @@
-import math
-import pygame
-
 class DamageText:
     def __init__(self, x, y, text, color, duration=0.8):
         self.x = x
