@@ -25,13 +25,15 @@ class LiquidFill:
         self.wave_freq = random.uniform(0.12, 0.22)
         self.bubbles = []
         for _ in range(random.randint(2, 4)):
-            self.bubbles.append({
-                'x': random.uniform(4, bbox_w - 4),
-                'y': random.uniform(4, bbox_h - 4),
-                'r': random.uniform(1.5, 3.0),
-                'speed': random.uniform(0.3, 0.8),
-                'phase': random.uniform(0, math.pi * 2),
-            })
+            self.bubbles.append(
+                {
+                    "x": random.uniform(4, bbox_w - 4),
+                    "y": random.uniform(4, bbox_h - 4),
+                    "r": random.uniform(1.5, 3.0),
+                    "speed": random.uniform(0.3, 0.8),
+                    "phase": random.uniform(0, math.pi * 2),
+                }
+            )
         self._cache = None
         self._cache_size = None
         self._frame = 0
@@ -40,12 +42,12 @@ class LiquidFill:
         self.phase += self.speed
         self._frame += 1
         for b in self.bubbles:
-            b['y'] -= b['speed']
-            b['phase'] += 0.05
-            b['x'] += math.sin(b['phase']) * 0.3
-            if b['y'] < 2:
-                b['y'] = self.h - 2
-                b['x'] = random.uniform(4, self.w - 4)
+            b["y"] -= b["speed"]
+            b["phase"] += 0.05
+            b["x"] += math.sin(b["phase"]) * 0.3
+            if b["y"] < 2:
+                b["y"] = self.h - 2
+                b["x"] = random.uniform(4, self.w - 4)
 
     def _render(self, sw, sh, local_pts, mask_surf):
         liquid_surf = pygame.Surface((sw, sh), pygame.SRCALPHA)
@@ -57,7 +59,9 @@ class LiquidFill:
         r, g, b = self.color[:3]
 
         for row in range(base_y, sh, 2):
-            wave_offset = math.sin(self.phase * 2 + row * self.wave_freq) * self.wave_amp
+            wave_offset = (
+                math.sin(self.phase * 2 + row * self.wave_freq) * self.wave_amp
+            )
             depth_ratio = (row - base_y) / max(1, sh - base_y)
             alpha = int(40 + 120 * depth_ratio)
             cr = min(255, int(r * (0.6 + 0.4 * depth_ratio)))
@@ -67,24 +71,32 @@ class LiquidFill:
             start_x = max(0, int(wave_offset))
             end_x = min(sw, sw + int(wave_offset))
             if end_x > start_x:
-                pygame.draw.line(liquid_surf, (cr, cg, cb, alpha),
-                                 (start_x, row), (end_x, row), 2)
+                pygame.draw.line(
+                    liquid_surf, (cr, cg, cb, alpha), (start_x, row), (end_x, row), 2
+                )
 
         for dx in range(0, sw, 2):
-            wy = base_y + int(math.sin(self.phase * 2 + dx * self.wave_freq) * self.wave_amp)
+            wy = base_y + int(
+                math.sin(self.phase * 2 + dx * self.wave_freq) * self.wave_amp
+            )
             if 0 <= wy < sh:
                 highlight_alpha = int(140 + 60 * math.sin(self.phase * 3 + dx * 0.2))
-                pygame.draw.circle(liquid_surf, (*self.color[:3], min(255, highlight_alpha)),
-                                   (dx, wy), 1)
+                pygame.draw.circle(
+                    liquid_surf,
+                    (*self.color[:3], min(255, highlight_alpha)),
+                    (dx, wy),
+                    1,
+                )
 
         for bub in self.bubbles:
-            bx = int(bub['x'] * sw / self.w)
-            by = int(bub['y'] * sh / self.h)
-            br = max(1, int(bub['r']))
+            bx = int(bub["x"] * sw / self.w)
+            by = int(bub["y"] * sh / self.h)
+            br = max(1, int(bub["r"]))
             if base_y < by < sh:
-                balpha = int(80 + 40 * math.sin(bub['phase'] * 3))
-                pygame.draw.circle(liquid_surf, (*self.color[:3], min(255, balpha)),
-                                   (bx, by), br, 1)
+                balpha = int(80 + 40 * math.sin(bub["phase"] * 3))
+                pygame.draw.circle(
+                    liquid_surf, (*self.color[:3], min(255, balpha)), (bx, by), br, 1
+                )
 
         liquid_surf.blit(mask_surf, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
         return liquid_surf
@@ -99,9 +111,11 @@ class LiquidFill:
         if sw < 2 or sh < 2:
             return
 
-        need_render = (self._cache is None
-                       or self._cache_size != (sw, sh)
-                       or self._frame % self.CACHE_INTERVAL == 0)
+        need_render = (
+            self._cache is None
+            or self._cache_size != (sw, sh)
+            or self._frame % self.CACHE_INTERVAL == 0
+        )
 
         if need_render:
             local_pts = [(p[0] - min_x + 2, p[1] - min_y + 2) for p in outline_points]
@@ -114,7 +128,7 @@ class LiquidFill:
 
 
 class Alien:
-    SHAPES = ['diamond', 'hexagon', 'chevron', 'crab', 'ufo']
+    SHAPES = ["diamond", "hexagon", "chevron", "crab", "ufo"]
 
     MAX_HEALTH = 5  # 5 hits to kill (each hit = 20% liquid)
 
@@ -132,12 +146,12 @@ class Alien:
 
         # Dive state
         self.diving = False
-        self.dive_path = []       # list of (x, y) waypoints
-        self.dive_index = 0       # current segment index
-        self.dive_t = 0.0         # interpolation 0..1 within segment
-        self.dive_speed = 3.0     # waypoints per second
-        self.formation_ox = 0.0   # offset from formation x while diving
-        self.formation_oy = 0.0   # offset from formation y while diving
+        self.dive_path = []  # list of (x, y) waypoints
+        self.dive_index = 0  # current segment index
+        self.dive_t = 0.0  # interpolation 0..1 within segment
+        self.dive_speed = 3.0  # waypoints per second
+        self.formation_ox = 0.0  # offset from formation x while diving
+        self.formation_oy = 0.0  # offset from formation y while diving
         self.dive_shot_pending = False
         self.dive_shoot_timer = 0.0
         self._dive_bullet = None
@@ -152,28 +166,32 @@ class Alien:
 
     @property
     def rect(self):
-        return pygame.Rect(self.draw_x - self.w // 2, self.draw_y - self.h // 2, self.w, self.h)
+        return pygame.Rect(
+            self.draw_x - self.w // 2, self.draw_y - self.h // 2, self.w, self.h
+        )
 
     def get_outline(self):
         cx, cy = int(self.draw_x), int(self.draw_y)
         hw, hh = self.w // 2, self.h // 2
         wobble = math.sin(self.phase) * 1.5
 
-        if self.shape == 'diamond':
+        if self.shape == "diamond":
             return [
                 (cx, cy - hh - wobble),
                 (cx + hw, cy),
                 (cx, cy + hh + wobble),
                 (cx - hw, cy),
             ]
-        elif self.shape == 'hexagon':
+        elif self.shape == "hexagon":
             pts = []
             for i in range(6):
                 angle = math.pi / 6 + i * math.pi / 3
                 r = hw + wobble
-                pts.append((cx + int(r * math.cos(angle)), cy + int(r * math.sin(angle))))
+                pts.append(
+                    (cx + int(r * math.cos(angle)), cy + int(r * math.sin(angle)))
+                )
             return pts
-        elif self.shape == 'chevron':
+        elif self.shape == "chevron":
             return [
                 (cx - hw, cy - hh),
                 (cx, cy - hh // 2 + wobble),
@@ -182,7 +200,7 @@ class Alien:
                 (cx, cy + hh),
                 (cx - hw, cy),
             ]
-        elif self.shape == 'crab':
+        elif self.shape == "crab":
             return [
                 (cx - hw - 4, cy - hh + 2),
                 (cx - hw // 2, cy - hh - wobble),
@@ -257,7 +275,12 @@ class Alien:
 
     def draw(self, surface):
         outline = self.get_outline()
-        self.liquid.draw(surface, outline, int(self.draw_x - self.w // 2), int(self.draw_y - self.h // 2))
+        self.liquid.draw(
+            surface,
+            outline,
+            int(self.draw_x - self.w // 2),
+            int(self.draw_y - self.h // 2),
+        )
         draw_glow_lines(surface, self.color, True, outline, 2, 3)
         # Eyes
         cx, cy = int(self.draw_x), int(self.draw_y)
@@ -268,4 +291,10 @@ class Alien:
         surface.blit(eye_surf, (cx - 7, cy - 6))
 
     def shoot(self):
-        return Bullet(self.draw_x, self.draw_y + self.h // 2 + 4, ALIEN_BULLET_SPEED, NEON_RED, is_alien=True)
+        return Bullet(
+            self.draw_x,
+            self.draw_y + self.h // 2 + 4,
+            ALIEN_BULLET_SPEED,
+            NEON_RED,
+            is_alien=True,
+        )

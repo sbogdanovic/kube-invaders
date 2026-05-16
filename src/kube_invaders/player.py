@@ -3,7 +3,12 @@ import math
 import pygame
 
 from .constants import (
-    WIDTH, PLAYER_SPEED, BULLET_SPEED, NEON_CYAN, NEON_WHITE, NEON_ORANGE,
+    WIDTH,
+    PLAYER_SPEED,
+    BULLET_SPEED,
+    NEON_CYAN,
+    NEON_WHITE,
+    NEON_ORANGE,
     NEON_YELLOW,
 )
 from .glow import draw_glow_lines
@@ -23,6 +28,7 @@ class Player:
         try:
             import pygame.mixer
             from .constants import ASSET_LASER
+
             self._shoot_sound = pygame.mixer.Sound(ASSET_LASER)
         except Exception:
             self._shoot_sound = None
@@ -66,14 +72,28 @@ class Player:
         draw_glow_lines(surface, NEON_WHITE, True, cockpit, 1, 2)
 
         # Wing accents
-        draw_glow_lines(surface, NEON_CYAN, False,
-                        [(cx - hw - 4, cy + hh + 2), (cx - hw, cy + hh), (cx - hw + 4, cy)], 1, 2)
-        draw_glow_lines(surface, NEON_CYAN, False,
-                        [(cx + hw + 4, cy + hh + 2), (cx + hw, cy + hh), (cx + hw - 4, cy)], 1, 2)
+        draw_glow_lines(
+            surface,
+            NEON_CYAN,
+            False,
+            [(cx - hw - 4, cy + hh + 2), (cx - hw, cy + hh), (cx - hw + 4, cy)],
+            1,
+            2,
+        )
+        draw_glow_lines(
+            surface,
+            NEON_CYAN,
+            False,
+            [(cx + hw + 4, cy + hh + 2), (cx + hw, cy + hh), (cx + hw - 4, cy)],
+            1,
+            2,
+        )
 
         # Engine thrust — animated flicker
         flicker = math.sin(self.thrust_phase) * 4 + 6
-        thrust_color = NEON_ORANGE if int(self.thrust_phase * 10) % 2 == 0 else NEON_YELLOW
+        thrust_color = (
+            NEON_ORANGE if int(self.thrust_phase * 10) % 2 == 0 else NEON_YELLOW
+        )
         thrust = [
             (cx - 5, cy + hh - 4),
             (cx, cy + hh + flicker),
@@ -90,4 +110,5 @@ class Player:
             except Exception:
                 pass
         from .bullet import Bullet
+
         return Bullet(self.x, self.y - self.h // 2 - 8, -BULLET_SPEED, NEON_CYAN)
