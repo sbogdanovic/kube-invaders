@@ -23,7 +23,7 @@ class Game:
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("Pod Shooter 2 — Neon Space Invaders")
+        pygame.display.set_caption("Pod Invaders")
         self.clock = pygame.time.Clock()
         self.font = PixelFont("monospace", 18)
         self.big_font = PixelFont("monospace", 36)
@@ -34,6 +34,43 @@ class Game:
         self._gameover_fade = 0.0
         self._gameover_text_alpha = 0.0
         self._gameover_text_zoom = 1.4
+        # Music
+        self._music_state = None
+        from .constants import ASSET_MUSIC_MENU, ASSET_MUSIC_GAME, ASSET_HIT_ENEMY_1, ASSET_HIT_ENEMY_3, ASSET_PLAYER_EXPLODE, ASSET_PLAYER_HIT
+        self._music_files = {
+            'menu': ASSET_MUSIC_MENU,
+            'game': ASSET_MUSIC_GAME,
+        }
+        pygame.mixer.init()
+        self._play_music('menu')
+        # Load hit sound
+        try:
+            self._hit_sound = pygame.mixer.Sound(ASSET_HIT_ENEMY_1)
+        except Exception:
+            self._hit_sound = None
+        try:
+            self._explode_sound = pygame.mixer.Sound(ASSET_HIT_ENEMY_3)
+        except Exception:
+            self._explode_sound = None
+        try:
+            self._player_explode_sound = pygame.mixer.Sound(ASSET_PLAYER_EXPLODE)
+        except Exception:
+            self._player_explode_sound = None
+        try:
+            self._player_hit_sound = pygame.mixer.Sound(ASSET_PLAYER_HIT)
+        except Exception:
+            self._player_hit_sound = None
+
+    def _play_music(self, which):
+        """Switch music track if needed."""
+        if self._music_state == which:
+            return
+        self._music_state = which
+        try:
+            pygame.mixer.music.load(self._music_files[which])
+            pygame.mixer.music.play(-1)
+        except Exception as e:
+            print(f"[WARN] Could not play music: {e}")
 
     def reset(self):
         self.player = Player()
@@ -99,12 +136,14 @@ class Game:
                             self.state = 'playing'
                             self._gameover_zoom = 1.0
                             self._gameover_fade = 0.0
+                            self._play_music('game')
                     elif self.state == 'game_over':
                         if event.key in (pygame.K_RETURN, pygame.K_SPACE):
                             self.reset()
                             self.state = 'playing'
                             self._gameover_zoom = 1.0
                             self._gameover_fade = 0.0
+                            self._play_music('game')
                     elif self.state == 'playing':
                         if event.key == pygame.K_SPACE:
                             b = self.player.shoot()
@@ -113,6 +152,10 @@ class Game:
 
             # Always animate the starfield, even on title/game over screens
             self.starfield.update()
+
+            # Music switching for menu/game over
+            if self.state in ('title', 'game_over'):
+                self._play_music('menu')
 
 
             if self.state == 'playing':
@@ -199,12 +242,23 @@ class Game:
                     killed = a.hit()
                     removed = 1 / a.MAX_HEALTH
                     pct = int(removed * 100)
+                    # Play hit sound
+                    if hasattr(self, '_hit_sound') and self._hit_sound:
+                        try:
+                            self._hit_sound.play()
+                        except Exception:
+                            pass
                     # Show fading damage text next to alien
                     from .damagetext import DamageText
                     dx = a.draw_x + a.w // 2 + 12
                     dy = a.draw_y - a.h // 2
                     self.damagetexts.append(DamageText(dx, dy, f"-{pct}%", a.color))
                     if killed:
+                        if hasattr(self, '_explode_sound') and self._explode_sound:
+                            try:
+                                self._explode_sound.play()
+                            except Exception:
+                                pass
                         self.score += 100
                         self.spawn_explosion(a.draw_x, a.draw_y, a.color, 20)
                     else:
@@ -220,6 +274,19 @@ class Game:
                 if b.rect.colliderect(self.player.rect):
                     b.alive = False
                     self.lives -= 1
+                    # Play player explosion or hit sound
+                    if self.lives <= 0:
+                        if hasattr(self, '_player_explode_sound') and self._player_explode_sound:
+                            try:
+                                self._player_explode_sound.play()
+                            except Exception:
+                                pass
+                    else:
+                        if hasattr(self, '_player_hit_sound') and self._player_hit_sound:
+                            try:
+                                self._player_hit_sound.play()
+                            except Exception:
+                                pass
                     self.spawn_explosion(self.player.x, self.player.y, NEON_CYAN, 25)
                     if self.lives <= 0:
                         self.player.alive = False

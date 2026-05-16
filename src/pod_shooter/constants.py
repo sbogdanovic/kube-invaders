@@ -1,3 +1,11 @@
+# Asset paths
+ASSET_MUSIC_MENU = "assets/sound/Pixel Drift Loop.mp3"
+ASSET_MUSIC_GAME = "assets/sound/Photon Raid Loop.mp3"
+ASSET_LASER = "assets/sound/LazerFire3.wav"
+ASSET_HIT_ENEMY_1 = "assets/sound/Hit_Enemy_1.wav"
+ASSET_HIT_ENEMY_3 = "assets/sound/Hit_Enemy_3.wav"
+ASSET_PLAYER_EXPLODE = "assets/sound/Vaporize.wav"
+ASSET_PLAYER_HIT = "assets/sound/Player_Hit_Small.wav"
 WIDTH = 800
 HEIGHT = 600
 FPS = 60
