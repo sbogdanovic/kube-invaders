@@ -19,6 +19,13 @@ class Player:
         self.respawn_timer = 0
         self.blink = False
         self.thrust_phase = 0.0
+        # Load shoot sound
+        try:
+            import pygame.mixer
+            from .constants import ASSET_LASER
+            self._shoot_sound = pygame.mixer.Sound(ASSET_LASER)
+        except Exception:
+            self._shoot_sound = None
 
     @property
     def rect(self):
@@ -77,5 +84,10 @@ class Player:
     def shoot(self):
         if not self.alive:
             return None
+        if self._shoot_sound:
+            try:
+                self._shoot_sound.play()
+            except Exception:
+                pass
         from .bullet import Bullet
         return Bullet(self.x, self.y - self.h // 2 - 8, -BULLET_SPEED, NEON_CYAN)
